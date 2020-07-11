@@ -20,6 +20,7 @@
      * [MaSIF-site](#MaSIF-site)
      * [MaSIF-search](#MaSIF-search)
 - [PyMOL plugin](#PyMOL-plugin)
+- [Docker container](#Docker-container)
 - [License](#License)
 - [Reference](#Reference)
 ## Description
@@ -45,11 +46,13 @@ a) ligand prediction for protein binding pockets (MaSIF-ligand); b) protein-prot
 likely to interact with other proteins (MaSIF-site); c) ultrafast scanning of surfaces, where we use 
 surface fingerprints from binding partners to predict the structural configuration of protein-protein complexes (MaSIF-search). 
 
-This repository reproduces the experiments of: 
+This repository should closely reproduce the experiments of: 
 
-Gainza, P., Sverrisson, F., Monti, F., Rodola, E., Bronstein, M. M., & Correia, B. E. (2019).
-Deciphering interaction fingerprints from protein molecular surfaces.
-[bioRxiv, 606202.](https://www.biorxiv.org/content/10.1101/606202v1)
+Gainza, P., Sverrisson, F., Monti, F., Rodola, E., Boscaini, D Bronstein, M. M., & Correia, B. E. (2019).
+Deciphering interaction fingerprints from protein molecular surfaces using geometric deep learning.
+Nat Methods 17, 184–192 (2020). https://doi.org/10.1038/s41592-019-0666-6
+
+<span style="color:red">Note: Since Feb 2020, we have greatly simplified the installation of MaSIF by replacing all Matlab code with Python code. However, this slightly changes the results from the paper. To reproduce the results for the paper exactly as published (with the pretrained neural networks) you can obtain it at: https://github.com/pablogainza/masif_paper </span>.
 
 MaSIF is distributed under an [Apache License](https://raw.githubusercontent.com/LPDI-EPFL/masif/master/LICENSE). This 
 code is meant to serve as a tutorial, and the basis for researchers to exploit MaSIF in protein-surface learning tasks. 
@@ -68,23 +71,19 @@ train or evaluate the trained models as it can be up to 100 times faster than a 
 MaSIF relies on external software/libraries to handle protein databank files and surface files, 
 to compute chemical/geometric features and coordinates, and to perform neural network calculations. 
 The following is the list of required libraries and programs, as well as the version on which it was tested (in parenthesis).
-* [Python](https://www.python.org/) (2.7)
+* [Python](https://www.python.org/) (3.6)
 * [reduce](http://kinemage.biochem.duke.edu/software/reduce.php) (3.23). To add protons to proteins. 
 * [MSMS](http://mgltools.scripps.edu/packages/MSMS/) (2.6.1). To compute the surface of proteins. 
 * [BioPython](https://github.com/biopython/biopython) (1.66) . To parse PDB files. 
 * [PyMesh](https://github.com/PyMesh/PyMesh) (0.1.14). To handle ply surface files, attributes, and to regularize meshes.
-* [pyflann](https://github.com/primetang/pyflann) (1.6.14). To perform nearest neighbor searches of vertices.
 * PDB2PQR (2.1.1), multivalue, and [APBS](http://www.poissonboltzmann.org/) (1.5). These programs are necessary to compute electrostatics charges.
 * [open3D](https://github.com/IntelVCL/Open3D) (0.5.0.0). Mainly used for RANSAC alignment.
-* [matlab](https://ch.mathworks.com/products/matlab.html) (R2018a). Used to compute some geometric features and angular/radial coordinates.
-* [Python bindings for matlab](https://www.mathworks.com/help/matlab/matlab_external/get-started-with-matlab-engine-for-python.html) - To call matlab functions from within Python.
 * [Tensorflow](https://www.tensorflow.org/) (1.9). Use to model, train, and evaluate the actual neural networks. Models were trained and evaluated on a NVIDIA Tesla K40 GPU.
-* [SBI](https://pypi.org/project/StrBioInfo/). Used for parsing PDB files and generate biological assembly for MaSIF-ligand.
+* [StrBioInfo](https://pypi.org/project/StrBioInfo/). Used for parsing PDB files and generate biological assembly for MaSIF-ligand.
 * [Dask](https://dask.org/) (2.2.0). Run function calls on multiple threads (Optional for reproducing some benchmarks).
 * [Pymol](https://pymol.org/2/). This optional plugin allows one to visualize surface files in PyMOL.
  
-We are working to reduce this list of requirements for future versions.
-
+Alternatively you can use the Docker version, which is the easiest to install (See [Docker container](#Docker-container))
 ## Installation 
 After preinstalling dependencies, add the following environment variables to your path, changing the appropriate directories:
 
@@ -106,7 +105,7 @@ git clone https://github.com/lpdi-epfl/masif
 cd masif/
 ```
 
-Since MaSIF is written in Python and Matlab, no compilation is required.
+Since MaSIF is written in Python, no compilation is required.
 
 ## Method overview 
 
@@ -136,9 +135,9 @@ which performs the following steps:
 
 1. Download the PDB. 
 2. Protonate the PDB, extract the desired chains, triangulate the surface (using MSMS), and compute chemical features. 
-3. Translate the surface to a matlab file and compute the shape index on each vertex. 
-4. Compute the angular and radial geodesic coordinates for each patch. 
-5. Extract all patches, with features and coordinates, for each protein.
+3. Extract all patches, with features and coordinates, for each protein.
+
+MaSIF's main speed bottleneck lie in these three steps. The main performance bottlenecks are computing the angular coordinates using MDS, computing the Poisson-Boltzmann electrostatics and regularizing the mesh after computing the MSMS surface.
 
 Each application data directory (under masif/data/masif\*) contains a script to precompute the data.
 
@@ -341,9 +340,11 @@ cd data/masif_ppi_search/pdl1_benchmark
 ## PyMOL plugin
 
 A PyMOL plugin to visualize protein surfaces is provided in the source/pymol subdirectory. We used this plugin for all the structural figures 
-shown in our paper. This plugin requires PyMOL and PyMesh to be installed in your local computer. 
+shown in our paper. This plugin requires PyMOL to be installed in your local computer.
 
-To install the plugin go to the Plugin -> Plugin Manager window in PyMOL and choose the Install new plugin tab. Then select the masif/source/masif_pymol_plugin.zip file.
+Please see the following tutorial on how to install it:
+
+[Pymol plugin installation](pymol_plugin_installation.md)
 
 To load a protein surface file, run this command inside PyMOL: 
 
@@ -353,6 +354,12 @@ loadply ABCD_E.ply
 
 Example:
 ![MaSIF PyMOL plugin example](https://raw.githubusercontent.com/LPDI-EPFL/masif/master/img/PyMOL-01.png)
+
+## Docker container
+
+The easiest way to test MaSIF is through a Docker container. Please see our tutorial on reproducing the paper results here:
+
+[Docker container](docker_tutorial.md)
 
 
 ## License

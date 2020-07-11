@@ -20,11 +20,12 @@ def pad_indices(indices, max_verts):
     return padded_ix
 
 
-# Run masif site on a protein, on a previously trained protein.
+# Run masif site on a protein, on a previously trained network.
 def run_masif_site(
     params, learning_obj, rho_wrt_center, theta_wrt_center, input_feat, mask, indices
 ):
     indices = pad_indices(indices, mask.shape[1])
+    mask = np.expand_dims(mask, 2)
     feed_dict = {
         learning_obj.rho_coords: rho_wrt_center,
         learning_obj.theta_coords: theta_wrt_center,
@@ -54,8 +55,6 @@ def train_masif_site(
 
     # Open training list.
 
-    # Open
-
     list_training_loss = []
     list_training_auc = []
     list_validation_auc = []
@@ -63,7 +62,7 @@ def train_masif_site(
     best_val_auc = 0
 
     out_dir = params["model_dir"]
-    logfile = open(out_dir + "log.txt", "w", 0)
+    logfile = open(out_dir + "log.txt", "w")
     for key in params:
         logfile.write("{}: {}\n".format(key, params[key]))
 
@@ -110,7 +109,10 @@ def train_masif_site(
             mydir = params["masif_precomputation_dir"] + ppi_pair_id + "/"
             pdbid = ppi_pair_id.split("_")[0]
             chains1 = ppi_pair_id.split("_")[1]
-            chains2 = ppi_pair_id.split("_")[2]
+            if len(ppi_pair_id.split("_")) > 2:
+                chains2 = ppi_pair_id.split("_")[2]
+            else: 
+                chains2 = ''
             pids = []
             if pdbid + "_" + chains1 in training_list:
                 pids.append("p1")
@@ -136,6 +138,7 @@ def train_masif_site(
                 if np.sum(params["feat_mask"]) < 5:
                     input_feat = mask_input_feat(input_feat, params["feat_mask"])
                 mask = np.load(mydir + pid + "_mask.npy")
+                mask = np.expand_dims(mask, 2)
                 indices = np.load(mydir + pid + "_list_indices.npy", encoding="latin1")
                 # indices is (n_verts x <30), it should be
                 indices = pad_indices(indices, mask.shape[1])
@@ -226,7 +229,10 @@ def train_masif_site(
             mydir = params["masif_precomputation_dir"] + ppi_pair_id + "/"
             pdbid = ppi_pair_id.split("_")[0]
             chains1 = ppi_pair_id.split("_")[1]
-            chains2 = ppi_pair_id.split("_")[2]
+            if len(ppi_pair_id.split("_")) > 2:
+                chains2 = ppi_pair_id.split("_")[2]
+            else: 
+                chains2 = ''
             pids = []
             if pdbid + "_" + chains1 in testing_list:
                 pids.append("p1")
@@ -253,6 +259,7 @@ def train_masif_site(
                 if np.sum(params["feat_mask"]) < 5:
                     input_feat = mask_input_feat(input_feat, params["feat_mask"])
                 mask = np.load(mydir + pid + "_mask.npy")
+                mask = np.expand_dims(mask, 2)
                 indices = np.load(mydir + pid + "_list_indices.npy", encoding="latin1")
                 # indices is (n_verts x <30), it should be
                 indices = pad_indices(indices, mask.shape[1])

@@ -17,7 +17,7 @@ Released under an Apache License 2.0
 
 params = masif_opts["ligand"]
 # Load testing data
-testing_data = tf.contrib.data.TFRecordDataset(
+testing_data = tf.data.TFRecordDataset(
     os.path.join(params["tfrecords_dir"], "testing_data_sequenceSplit_30.tfrecord")
 )
 testing_data = testing_data.map(_parse_function)

@@ -1,4 +1,5 @@
 # Header variables and parameters.
+import pymesh
 import sys
 import os
 import time
@@ -84,41 +85,50 @@ for count, ppi_pair_id in enumerate(ppi_list):
     print(ppi_pair_id)
 
     out_desc_dir = os.path.join(params["desc_dir"], ppi_pair_id)
-    if not os.path.exists(out_desc_dir):
+    if not os.path.exists(os.path.join(out_desc_dir, 'p1_desc_straight.npy')):
         os.mkdir(out_desc_dir)
-
-    # Read p1
-    try:
-        labels = np.load(in_dir + "p1" + "_sc_labels.npy")
-        mylabels = labels[0]
-        labels = np.median(mylabels, axis=1)
-    except:# Exception, e:
-        print('Could not open '+in_dir+'p1'+'_sc_labels.npy: '+str(e))
-        continue
-    print("Number of vertices: {}".format(len(labels)))
-
-    # pos_labels: points that pass the sc_filt.
-    pos_labels = np.where(
-        (labels > params["min_sc_filt"]) & (labels < params["max_sc_filt"])
-    )[0]
-    l = pos_labels
+#    else:
+#        # Ignore this one as it was already computed.
+#        print('Ignoring descriptor computation for {} as it was already computed'.format(ppi_pair_id))
+#        continue
 
     pdbid = ppi_pair_id.split("_")[0]
     chain1 = ppi_pair_id.split("_")[1]
-    chain2 = ppi_pair_id.split("_")[2]
+    if len(ppi_pair_id.split("_")) > 2: 
+        chain2 = ppi_pair_id.split("_")[2]
+    else:
+        chain2 = ''
 
-    X1 = np.load(in_dir + "p1" + "_X.npy")
-    Y1 = np.load(in_dir + "p1" + "_Y.npy")
-    Z1 = np.load(in_dir + "p1" + "_Z.npy")
-    v1 = np.stack([X1[l], Y1[l], Z1[l]], axis=1)
+
+    # Read shape complementarity labels if chain2 != ''
+    if chain2 != '':
+        try:
+            labels = np.load(in_dir + "p1" + "_sc_labels.npy")
+            mylabels = labels[0]
+            labels = np.median(mylabels, axis=1)
+        except:# Exception, e:
+            print('Could not open '+in_dir+'p1'+'_sc_labels.npy: '+str(e))
+            continue
+        print("Number of vertices: {}".format(len(labels)))
+
+        # pos_labels: points that pass the sc_filt.
+        pos_labels = np.where(
+            (labels > params["min_sc_filt"]) & (labels < params["max_sc_filt"])
+        )[0]
+        l = pos_labels
+    else:
+        l = []
+
+
 
     if len(l) > 0 and chain2 != "":
+        ply_fn1 = masif_opts['ply_file_template'].format(pdbid, chain1)
+        v1 = pymesh.load_mesh(ply_fn1).vertices[l]
         from sklearn.neighbors import NearestNeighbors
 
-        X2 = np.load(in_dir + "p2" + "_X.npy")
-        Y2 = np.load(in_dir + "p2" + "_Y.npy")
-        Z2 = np.load(in_dir + "p2" + "_Z.npy")
-        v2 = np.stack([X2, Y2, Z2], axis=1)
+        ply_fn2 = masif_opts['ply_file_template'].format(pdbid, chain2 )
+        v2 = pymesh.load_mesh(ply_fn2).vertices
+
         # For each point in v1, find the closest point in v2.
         nbrs = NearestNeighbors(n_neighbors=1, algorithm="ball_tree").fit(v2)
         d, r = nbrs.kneighbors(v1)
@@ -136,7 +146,10 @@ for count, ppi_pair_id in enumerate(ppi_list):
 
     tic = time.time()
     pid = "p1"
-    p1_rho_wrt_center = np.load(in_dir + pid + "_rho_wrt_center.npy")
+    try:
+        p1_rho_wrt_center = np.load(in_dir + pid + "_rho_wrt_center.npy")
+    except:
+        continue
     p1_theta_wrt_center = np.load(in_dir + pid + "_theta_wrt_center.npy")
     p1_input_feat = np.load(in_dir + pid + "_input_feat.npy")
     p1_input_feat = mask_input_feat(p1_input_feat, params["feat_mask"])
