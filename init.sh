@@ -2,10 +2,9 @@
 # Python 3.6
 sudo apt-get update
 
-sudo apt-get update
+# sudo apt-get update
 
-
-conda create masif python=3.6 
+# conda create masif python=3.6 
 conda activate masif
 conda install numpy
 
@@ -89,4 +88,4 @@ wget https://raw.githubusercontent.com/rlabduke/reduce/master/reduce_wwPDB_het_d
 export REDUCE_HET_DICT=~/masif/external/reduce/bin/reduce_wwPDB_het_dict.txt
 
 export PDB2XYZRN=~/masif/external/msms/bin/pdb_to_xyzrn
-$PDB2XYZRN
+ 
